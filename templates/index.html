@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Holoware Medical AI</title>
+    <link rel="icon" type="image/x-icon" href="https://holoware.co/wp-content/uploads/2024/06/favicon-1.ico">
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <style>
+        /* HTML: <div class="loader"></div> */
+        .loader {
+            width: 120px;
+            height: 20px;
+            -webkit-mask: linear-gradient(90deg, #000 70%, transparent 0) 0 / 20%;
+            mask: linear-gradient(90deg, #000 70%, transparent 0) 0 / 20%; /* Standard mask */
+            background:
+                linear-gradient(#020d23 0 0) 0 / 100% no-repeat
+                #ddd; /* Light gray background */
+            animation: l4 0.9s infinite linear;
+        }
+
+        @keyframes l4 {
+            0% {
+                background-size: 0% 100%;
+            }
+            100% {
+                background-size: 100% 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><img src="https://holoware.co/wp-content/uploads/2024/04/Blue-Logo-new.png" class="top-left-image" alt="Holoware Logo" width="280"></h1>
+        <h1>Medical X-ray analysis</h1><br>
+    </header>
+
+    <main>
+        <div class="form-container">
+            <form id="uploadForm" action="/" method="post" enctype="multipart/form-data">
+                <label for="image">Input Image:</label>
+                <div class="image-container">
+                    <input type="file" id="image" name="image" accept="image/*" required>
+                    <div class="image-preview-wrapper">
+                        <img id="imagePreview" style="display: none;" />
+                        <div class="cancel-btn" style="display: none;">&times;</div>
+                    </div>
+                </div>
+
+                <label for="question">Question/Instruction:</label>
+                <input type="text" id="question" name="question" placeholder="Enter your instruction/question..." required>
+
+                <!-- LLM section hidden with CSS -->
+                <label for="llm" class="hidden">LLM:</label>
+                <select id="llm" name="llm" class="hidden">
+                    <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                    <option value="med-alpaca">med-alpaca</option>
+                </select>
+
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+
+        <!-- Processing Modal Structure -->
+        <div id="processingModal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Processing...</h2>
+                <div class="loader"></div>
+                <p>Please wait while Holoware AI processes your input.</p>
+            </div>
+        </div>
+
+        <!-- Output Modal Structure -->
+        <div id="outputModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2>Processed Output</h2>
+                <img id="outputImage" />
+                <pre id="modalContent"></pre>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('uploadForm');
+            const imageInput = document.getElementById('image');
+            const imagePreview = document.getElementById('imagePreview');
+            const cancelBtn = document.querySelector('.cancel-btn');
+            const processingModal = document.getElementById('processingModal');
+            const outputModal = document.getElementById('outputModal');
+            const outputImage = document.getElementById('outputImage');
+            const modalContent = document.getElementById('modalContent');
+            const closeBtn = document.querySelector('.close-btn');
+
+            // Handle image input change
+            imageInput.addEventListener('change', () => {
+                const file = imageInput.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        imagePreview.src = e.target.result;
+                        imagePreview.style.display = 'block';
+                        cancelBtn.style.display = 'flex';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    imagePreview.style.display = 'none';
+                    cancelBtn.style.display = 'none';
+                }
+            });
+
+            // Handle cancel button click
+            cancelBtn.addEventListener('click', () => {
+                imageInput.value = ''; // Clear the file input
+                imagePreview.src = '';
+                imagePreview.style.display = 'none';
+                cancelBtn.style.display = 'none';
+            });
+
+            // Handle form submission
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault(); // Prevent the form from submitting normally
+
+                const formData = new FormData(form);
+
+                // Show processing modal
+                processingModal.style.display = 'block';
+
+                try {
+                    // Send form data to the server
+                    const response = await fetch('http://127.0.0.1:3000/', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    // Parse the JSON response from the server
+                    const data = await response.json();
+
+                    // Hide processing modal
+                    processingModal.style.display = 'none';
+
+                    // Set output image and modal content
+                    outputImage.src = imagePreview.src;
+                    modalContent.textContent = `Output: ${data.table}`; // Ensure 'data.table' exists in your server response
+                    outputModal.style.display = 'block';
+                } catch (error) {
+                    console.error('Error:', error);
+                    processingModal.style.display = 'none';
+                    modalContent.textContent = 'An error occurred while processing your request.';
+                    outputModal.style.display = 'block';
+                }
+            });
+
+            // Handle close button click
+            closeBtn.addEventListener('click', () => {
+                outputModal.style.display = 'none';
+            });
+
+            // Close modal on click outside
+            window.addEventListener('click', (event) => {
+                if (event.target === outputModal) {
+                    outputModal.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
